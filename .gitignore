@@ -1,0 +1,13 @@
+# Dependency directories
+node_modules/
+
+# Production build outputs
+dist/
+
+# Local environment secret variables (CRITICAL)
+.env
+.env.local
+
+# Logs and system files
+npm-debug.log*
+.DS_Store

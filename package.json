@@ -1,0 +1,31 @@
+{
+  "name": "universal-tenant-router",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.1.1",
+    "@types/pg": "^8.20.0",
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.2",
+    "dotenv-expand": "^13.0.0",
+    "express": "^5.2.1",
+    "fastify": "^5.10.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.22.0",
+    "resend": "^6.17.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
+  }
+}
