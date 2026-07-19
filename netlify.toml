@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  node_bundler = "esbuild"
+  included_files = ["src/db/**"]
+  external_node_modules = ["bcrypt"]
+
+[functions."telemetry"]
+  schedule = "0 */6 * * *"
+
+# Proxy all HTTP traffic into the Express app via serverless-http
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/router"
+  status = 200
+  force = true

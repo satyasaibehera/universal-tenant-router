@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { Pool } from 'pg';
-import { pool as controlPlanePool } from '../db/pool';
+import { createNeonPool, pool as controlPlanePool } from '../db/pool';
 import { buildTenantConnectionString } from '../middleware/tenant-router.middleware';
 
 const NEON_API_BASE = 'https://console.neon.tech/api/v2';
@@ -254,12 +253,7 @@ export class LifecycleService {
       );
     }
 
-    const transientPool = new Pool({
-      connectionString,
-      max: 1,
-      idleTimeoutMillis: 1_000,
-      connectionTimeoutMillis: 15_000,
-    });
+    const transientPool = createNeonPool(connectionString);
 
     try {
       await transientPool.query(ddl);

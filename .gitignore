@@ -11,3 +11,5 @@ dist/
 # Logs and system files
 npm-debug.log*
 .DS_Store
+# Local Netlify folder
+.netlify

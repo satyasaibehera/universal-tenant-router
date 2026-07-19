@@ -1,0 +1,8 @@
+POST http://localhost:8888/.netlify/functions/router/auth/register
+Content-Type: application/json
+
+{
+  "email": "satyasai.behera@yahoo.com",
+  "password": "TestPassword123!",
+  "companyName": "SSB Labs Dev"
+}

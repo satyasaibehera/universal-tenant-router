@@ -1,29 +1,31 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { Pool } from 'pg';
-import { pool as controlPlanePool } from '../db/pool';
+import {
+  createNeonPool,
+  pool as controlPlanePool,
+  type NeonPool,
+} from '../db/pool';
 import type { AuthTokenPayload } from '../services/auth.service';
 
-const TENANT_POOL_MAX = 10;
 const CONTROL_PLANE_DB_NAME = 'neondb';
 
 declare module 'express-serve-static-core' {
   interface Request {
-    /** Tenant-scoped pg pool resolved by tenantRouter. */
-    tenantPool?: Pool;
+    /** Tenant-scoped Neon serverless pool resolved by tenantRouter. */
+    tenantPool?: NeonPool;
     /** Active tenant id for this request. */
     currentTenantId?: string;
   }
 }
 
-/** In-memory tenant_id → Pool cache. */
-const tenantPoolCache = new Map<string, Pool>();
+/** In-memory tenant_id → Neon Pool cache (warm across invocations in the same isolate). */
+const tenantPoolCache = new Map<string, NeonPool>();
 
 /**
  * In-flight pool creation promises — prevents concurrent requests for the same
  * tenant from opening duplicate pools (async race / "thread-safe" guard).
  */
-const pendingTenantPools = new Map<string, Promise<Pool>>();
+const pendingTenantPools = new Map<string, Promise<NeonPool>>();
 
 export class TenantRouterError extends Error {
   constructor(
@@ -158,12 +160,12 @@ function assertTenantMembership(
   }
 }
 
-/** Resolve (or lazily create) a cached pg.Pool for a tenant database. */
-export async function resolveTenantPool(tenantId: string): Promise<Pool> {
+/** Resolve (or lazily create) a cached Neon Pool for a tenant database. */
+export async function resolveTenantPool(tenantId: string): Promise<NeonPool> {
   return getOrCreateTenantPool(tenantId);
 }
 
-async function getOrCreateTenantPool(tenantId: string): Promise<Pool> {
+async function getOrCreateTenantPool(tenantId: string): Promise<NeonPool> {
   const cached = tenantPoolCache.get(tenantId);
   if (cached) {
     return cached;
@@ -187,7 +189,7 @@ async function getOrCreateTenantPool(tenantId: string): Promise<Pool> {
   return creation;
 }
 
-async function createTenantPool(tenantId: string): Promise<Pool> {
+async function createTenantPool(tenantId: string): Promise<NeonPool> {
   const result = await controlPlanePool.query<{
     db_identifier: string;
     status: string;
@@ -211,11 +213,7 @@ async function createTenantPool(tenantId: string): Promise<Pool> {
   }
 
   const connectionString = buildTenantConnectionString(tenant.db_identifier);
-
-  return new Pool({
-    connectionString,
-    max: TENANT_POOL_MAX,
-  });
+  return createNeonPool(connectionString);
 }
 
 /**

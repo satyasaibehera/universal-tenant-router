@@ -233,6 +233,7 @@ export class AuthService {
     });
 
     if (error) {
+      console.error("❌ RESEND API ERROR:", error);
       throw new AuthError('Failed to send login code', 502);
     }
   }
