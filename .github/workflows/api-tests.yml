@@ -19,4 +19,4 @@ jobs:
           sudo dpkg -i hurl_4.2.0_amd64.deb
 
       - name: Execute HTTP Endpoints Test
-        run: hurl --test test.http
+        run: hurl --test test_cases/test.http
