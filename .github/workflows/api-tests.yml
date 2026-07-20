@@ -20,3 +20,14 @@ jobs:
 
       - name: Execute HTTP Endpoints Test
         run: hurl --test test_cases/test.http
+
+      # This step only executes if the Hurl tests pass above 🟢
+      - name: Deploy to Netlify
+        if: success()
+        uses: nwtgck/actions-netlify@v3
+        with:
+          publish-dir: './public' # Adjust to your build output directory if using a framework (e.g., ./dist or ./build)
+          production-deploy: true
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
