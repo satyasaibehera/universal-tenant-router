@@ -1,0 +1,22 @@
+name: API Integration Tests
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Allows you to manually click "Run workflow" in GitHub UI
+
+jobs:
+  run-api-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Hurl
+        run: |
+          curl -LO https://github.com/Orange-OpenSource/hurl/releases/download/4.2.0/hurl_4.2.0_amd64.deb
+          sudo dpkg -i hurl_4.2.0_amd64.deb
+
+      - name: Execute HTTP Endpoints Test
+        run: hurl --test test.http
