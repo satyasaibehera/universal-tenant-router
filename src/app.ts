@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction, Express } from 'express';
 import { authRouter } from './controllers/auth.controller';
 import { tenantRouter } from './middleware/tenant-router.middleware';
+import { pool } from './db/pool';
 
 const REQUIRED_ENV = [
   'DATABASE_URL',
@@ -70,6 +71,17 @@ export function createApp(): Express {
 
   app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  app.get('/health/db', async (req, res) => {
+    try {
+      // Use your existing database pool/client instance here
+      await pool.query('SELECT 1'); 
+      res.status(200).json({ database: 'connected' });
+    } catch (error) {
+      console.error('Database health check failed:', error);
+      res.status(500).json({ database: 'disconnected' });
+    }
   });
 
   app.use(
