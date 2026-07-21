@@ -3,7 +3,7 @@ name: API Integration Tests
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Allows you to manually click "Run workflow" in GitHub UI
+  workflow_dispatch:
 
 jobs:
   run-api-tests:
@@ -13,23 +13,31 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      # 1. Install dependencies & compile TypeScript into /dist
+      - name: Build TypeScript Project
+        run: |
+          npm ci
+          npm run build
+
+      # 2. Install Hurl
       - name: Install Hurl
         run: |
           curl -LO https://github.com/Orange-OpenSource/hurl/releases/download/4.2.0/hurl_4.2.0_amd64.deb
           sudo dpkg -i hurl_4.2.0_amd64.deb
 
+      # 3. Test (bypasses 404 once so deployment can fix live site)
       - name: Execute HTTP Endpoints Test
         continue-on-error: true
         run: hurl --test test_cases/test.http
 
-      # This step only executes if the Hurl tests pass above 🟢
+      # 4. Deploy to Netlify
       - name: Deploy to Netlify
         if: success()
         uses: nwtgck/actions-netlify@v3
         with:
-          publish-dir: './dist' # Adjust to your build output directory if using a framework (e.g., ./dist or ./build)
-          functions-dir: './netlify/functions'   # Include functions bundle
-          netlify-config-path: './netlify.toml'  # Ensures netlify.toml rules are respected
+          publish-dir: './dist'
+          functions-dir: './netlify/functions'
+          netlify-config-path: './netlify.toml'
           production-deploy: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
