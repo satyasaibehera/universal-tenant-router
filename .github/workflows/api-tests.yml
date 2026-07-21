@@ -13,6 +13,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Build TypeScript Project
         run: |
           npm ci
@@ -24,7 +29,7 @@ jobs:
           sudo dpkg -i hurl_4.2.0_amd64.deb
 
       - name: Execute HTTP Endpoints Test
-        continue-on-error: true   # <--- KEPT TEMPORARILY FOR THIS PUSH
+        # continue-on-error: true   # <--- enable temporary to skip test failures
         run: hurl --test test_cases/test.http
 
       - name: Deploy to Netlify
