@@ -29,14 +29,13 @@ jobs:
           sudo dpkg -i hurl_4.2.0_amd64.deb
 
       - name: Execute HTTP Endpoints Test
-        # continue-on-error: true   # <--- enable temporary to skip test failures
         run: hurl --test test_cases/test.http
 
       - name: Deploy to Netlify
         if: success()
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions --message "$COMMIT_MSG"
+          npx netlify-cli deploy --prod --dir=dist --functions=netlify/functions --site ${{ secrets.NETLIFY_SITE_ID }} --auth ${{ secrets.NETLIFY_AUTH_TOKEN }} --message "$COMMIT_MSG"
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
