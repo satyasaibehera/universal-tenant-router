@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction, Express } from 'express';
 import { authRouter } from './controllers/auth.controller';
+import { settingsRouter } from './controllers/settings.controller';
 import { tenantRouter } from './middleware/tenant-router.middleware';
 import { pool } from './db/pool';
 
@@ -32,10 +33,51 @@ export function createApp(): Express {
 
   app.use(express.json());
 
+  // CORS for societies-connect and other browser clients
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Content-Type, Authorization, x-tenant-id',
+    );
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  });
+
   // Public identity endpoints: /auth/register|login|verify
   app.use('/auth', authRouter);
 
+  // Public + admin system settings (control plane — not tenant-scoped)
+  // GET  /api/config/auth
+  // PUT  /api/admin/settings/auth
+  app.use('/api', settingsRouter);
+
+  // Public: active societies from Root Neon DB — bypasses tenantRouter JWT checks
+  app.get(
+    '/api/societies',
+    async (_req: Request, res: Response, next: NextFunction) => {
+      try {
+        const result = await pool.query(
+          `SELECT *
+           FROM public.societies
+           WHERE is_active = true`,
+        );
+        res.status(200).json(result.rows);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // Protected multi-tenant business API — every request passes tenantRouter
+  // (Bearer JWT + tenant membership). Do not mount public routes on this router.
   const api = express.Router();
   api.use(tenantRouter);
 
@@ -73,10 +115,9 @@ export function createApp(): Express {
     res.status(200).json({ status: 'ok' });
   });
 
-  app.get('/health/db', async (req, res) => {
+  app.get('/health/db', async (_req, res) => {
     try {
-      // Use your existing database pool/client instance here
-      await pool.query('SELECT 1'); 
+      await pool.query('SELECT 1');
       res.status(200).json({ database: 'connected' });
     } catch (error) {
       console.error('Database health check failed:', error);
