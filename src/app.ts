@@ -76,6 +76,25 @@ export function createApp(): Express {
     },
   );
 
+  // Public: buildings (+ flats/units) for a society — bypasses tenantRouter JWT checks
+  app.get(
+    '/api/buildings',
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const societyId = req.query.society_id;
+        if (typeof societyId !== 'string' || !societyId.trim()) {
+          res.status(400).json({ error: 'society_id query parameter is required' });
+          return;
+        }
+
+        const rows = await queryBuildingsForSociety(societyId.trim());
+        res.status(200).json(rows);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
   // Protected multi-tenant business API — every request passes tenantRouter
   // (Bearer JWT + tenant membership). Do not mount public routes on this router.
   const api = express.Router();
@@ -139,3 +158,61 @@ export function createApp(): Express {
 
   return app;
 }
+
+function isUndefinedTable(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: string }).code === '42P01'
+  );
+}
+
+/**
+ * Load buildings for a society from Root Neon DB, nesting associated flats or
+ * units when those tables exist.
+ */
+async function queryBuildingsForSociety(
+  societyId: string,
+): Promise<Record<string, unknown>[]> {
+  const withChildSql = (childTable: 'flats' | 'units') => `
+    SELECT
+      to_jsonb(b) || jsonb_build_object(
+        '${childTable}',
+        COALESCE(
+          (
+            SELECT jsonb_agg(to_jsonb(c) ORDER BY c.id)
+            FROM public.${childTable} AS c
+            WHERE c.building_id = b.id
+          ),
+          '[]'::jsonb
+        )
+      ) AS building
+    FROM public.buildings AS b
+    WHERE b.society_id = $1
+  `;
+
+  for (const childTable of ['flats', 'units'] as const) {
+    try {
+      const result = await pool.query<{ building: Record<string, unknown> }>(
+        withChildSql(childTable),
+        [societyId],
+      );
+      return result.rows.map((row) => row.building);
+    } catch (err) {
+      if (!isUndefinedTable(err)) {
+        throw err;
+      }
+      // Child table missing — try the other name, then bare buildings.
+    }
+  }
+
+  const buildingsOnly = await pool.query(
+    `SELECT *
+     FROM public.buildings
+     WHERE society_id = $1`,
+    [societyId],
+  );
+  return buildingsOnly.rows as Record<string, unknown>[];
+}
+
