@@ -33,7 +33,6 @@ export function createApp(): Express {
 
   app.use(express.json());
 
-  // CORS for societies-connect and other browser clients
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader(
@@ -59,49 +58,7 @@ export function createApp(): Express {
   // PUT  /api/admin/settings/auth
   app.use('/api', settingsRouter);
 
-  // Public: active societies from Root Neon DB — bypasses tenantRouter JWT checks
-  app.get(
-    '/api/societies',
-    async (_req: Request, res: Response, next: NextFunction) => {
-      try {
-        const result = await pool.query(
-          `SELECT *
-           FROM public.societies
-           WHERE is_active = true`,
-        );
-        res.status(200).json(result.rows);
-      } catch (err) {
-        next(err);
-      }
-    },
-  );
-
-  // Public: buildings for a society — bypasses tenantRouter JWT checks
-  app.get(
-    '/api/buildings',
-    async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const societyId = req.query.society_id;
-        if (typeof societyId !== 'string' || !societyId.trim()) {
-          res.status(400).json({ error: 'society_id query parameter is required' });
-          return;
-        }
-
-        const result = await pool.query(
-          `SELECT *
-           FROM public.buildings
-           WHERE society_id = $1`,
-          [societyId.trim()],
-        );
-        res.status(200).json(result.rows);
-      } catch (err) {
-        next(err);
-      }
-    },
-  );
-
-  // Protected multi-tenant business API — every request passes tenantRouter
-  // (Bearer JWT + tenant membership). Do not mount public routes on this router.
+  // Protected multi-tenant business API — JWT + tenant pool switching
   const api = express.Router();
   api.use(tenantRouter);
 
@@ -163,4 +120,3 @@ export function createApp(): Express {
 
   return app;
 }
-
